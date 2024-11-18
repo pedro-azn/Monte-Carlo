@@ -17,7 +17,7 @@ def telecharger_et_afficher(ticker, date_debut, date_fin):
 
         # Afficher le graphique de l'évolution du cours avec le prix brut (Close)
         plt.figure(figsize=(10, 6))
-        plt.plot(donnees['Close'], label="Prix brut")
+        plt.plot(donnees['Close'], label="Prix brut", color='blue', linewidth=1)  # Données réelles en bleu
         plt.title(f"Évolution des cours bruts de {ticker}")
         plt.xlabel("Date")
         plt.ylabel("Prix brut")
@@ -59,34 +59,42 @@ def calculer_et_afficher_log_returns(donnees):
         return None
 
 
-def generer_trajectoires_monte_carlo(prix_initial, mu, sigma, n_jours, n_trajectoires):
+def generer_trajectoires_monte_carlo(prix_initial, mu, sigma, n_jours, n_trajectoires, dates):
     """
-    Génère des trajectoires de Monte Carlo en utilisant un mouvement brownien géométrique.
+    Génère des trajectoires de Monte Carlo en utilisant un mouvement brownien géométrique
+    et les dates des données historiques.
     """
     trajectoires = []
     for _ in range(n_trajectoires):
-        trajectoire = [prix_initial]
+        trajectoire = [prix_initial]  # Initialiser avec le prix de départ (ici, le prix du premier jour des données historiques)
         for t in range(1, n_jours):
             prix_suivant = trajectoire[-1] * np.exp((mu - 0.5 * sigma**2) + sigma * np.random.normal())
             trajectoire.append(prix_suivant)
         trajectoires.append(trajectoire)
     
-    return trajectoires
+    # Assurer que les trajectoires utilisent les mêmes dates que les données historiques
+    dates_simulation = dates
+    return trajectoires, dates_simulation
 
 
-def afficher_graphique_monte_carlo(trajectoires, donnees_historique, titre="Simulations de Monte Carlo"):
+def afficher_graphique_monte_carlo(trajectoires, dates_simulation, donnees_historique, titre="Simulations de Monte Carlo"):
     """
     Affiche le graphique des trajectoires simulées de Monte Carlo.
     """
+    # Aligner les trajectoires simulées avec les dates des données historiques
     plt.figure(figsize=(10, 6))
     
     # Afficher les trajectoires simulées avec des couleurs aléatoires
     for trajectoire in trajectoires:
-        plt.plot(donnees_historique.index, trajectoire, alpha=0.5, color=np.random.rand(3,))  # Couleur aléatoire
+        plt.plot(dates_simulation, trajectoire, alpha=0.4, color=np.random.rand(3,))  # Couleur aléatoire
+
+    # Afficher les données réelles (historique) avec un style modifié
+    plt.plot(donnees_historique['Close'], label="Données réelles", color="red", linewidth=2)  # Données réelles en bleu et plus fines
 
     plt.title(titre)
     plt.xlabel("Date")
     plt.ylabel("Prix brut")
+    plt.legend()
     plt.grid(True)
     plt.show()
 
@@ -104,14 +112,14 @@ if donnees is not None:
     log_returns = calculer_et_afficher_log_returns(donnees)
 
     # Paramètres pour la simulation de Monte Carlo
-    prix_initial = donnees['Close'].iloc[-1]  # Dernier prix brut
+    prix_initial = donnees['Close'].iloc[0]  # Premier prix brut (pour partir du même point que le premier jour des données réelles)
     mu = log_returns.mean()  # Rendement moyen basé sur les log returns
     sigma = log_returns.std()  # Volatilité basée sur les log returns
     n_jours = len(donnees)  # Nombre de jours de la période
     n_trajectoires = int(input("How many trajectories need to be generated? \n"))  # Nombre de trajectoires de Monte Carlo à générer
 
-    # Générer les trajectoires de Monte Carlo
-    trajectoires = generer_trajectoires_monte_carlo(prix_initial, mu, sigma, n_jours, n_trajectoires)
+    # Générer les trajectoires de Monte Carlo et obtenir les dates simulées
+    trajectoires, dates_simulation = generer_trajectoires_monte_carlo(prix_initial, mu, sigma, n_jours, n_trajectoires, donnees.index)
 
     # Afficher les trajectoires simulées de Monte Carlo
-    afficher_graphique_monte_carlo(trajectoires, donnees, titre=f"Monte Carlo simulations for {ticker}")
+    afficher_graphique_monte_carlo(trajectoires, dates_simulation, donnees, titre=f"Monte Carlo simulations for {ticker}")
